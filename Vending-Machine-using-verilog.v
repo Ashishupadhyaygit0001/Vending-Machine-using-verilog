@@ -1,129 +1,122 @@
 `timescale 1ns / 1ps
-
 module VendingMachine(
-    input clk,                      // Clock input to synchronize operations
-    input rst,                      // Reset input to initialize or reset the vending machine
-    input [2:0] selected_product,   // 3-bit input for selecting the desired product
-    input payment_online,           // Input signal indicating payment via online method
-    input initiate,                 // Input signal to start the vending machine operation
-    input abort,                    // Input signal to cancel the current operation
-    input [6:0] coin_total_value,   // 7-bit input representing the total value of inserted coins
-
-    output reg [3:0] current_state,       // 4-bit output representing the current state of the vending machine
-    output reg dispense,                  // Output signal to trigger product dispensing
-    output reg [6:0] change_to_return,    // 7-bit output representing the change to be returned
-    output reg [6:0] selected_price       // 7-bit output indicating the price of the selected product
+input clk,
+input rst,
+input [2:0] product_code,
+input online_payment,
+input start,
+input cancel,
+input [6:0] total_coin_value,
+output reg [3:0] state,
+output reg dispense_product,
+output reg [6:0] return_change,
+output reg [6:0] product_price
 );
 
-// Definition of internal states for the state machine
-localparam STATE_IDLE = 4'b0000;
-localparam STATE_SELECT_PRODUCT = 4'b0001;
-localparam STATE_PEN_SELECTED = 4'b0010;
-localparam STATE_NOTEBOOK_SELECTED = 4'b0011;
-localparam STATE_COKE_SELECTED = 4'b0100;
-localparam STATE_LAYS_SELECTED = 4'b0101;
-localparam STATE_WATER_BOTTLE_SELECTED = 4'b0110;
-localparam STATE_DISPENSE_AND_RETURN_CHANGE = 4'b0111;
+// Internal states of the vending machine
+localparam IDLE_STATE = 4'b0000, 
+    SELECT_PRODUCT_STATE = 4'b0001, 
+    PEN_SELECTION_STATE = 4'b0010, 
+    NOTEBOOK_SELECTION_STATE = 4'b0011, 
+    COKE_SELECTION_STATE = 4'b0100, 
+    LAYS_SELECTION_STATE = 4'b0101, 
+    WATER_BOTTLE_SELECTION_STATE = 4'b0110, 
+    DISPENSE_AND_RETURN_STATE = 4'b0111;
 
-// Prices for each product represented in 7-bit format
-parameter PRICE_WATER_BOTTLE = 7'd20;
-parameter PRICE_LAYS = 7'd35;
-parameter PRICE_COKE = 7'd30;
-parameter PRICE_PEN = 7'd15;
-parameter PRICE_NOTEBOOK = 7'd50;
+// Parameters for product prices
+parameter WATER_BOTTLE_PRICE = 7'd20, LAYS_PRICE = 7'd35, COKE_PRICE = 7'd30, PEN_PRICE = 7'd15, NOTEBOOK_PRICE = 7'd50;
 
-// Internal registers for state and values management
-reg [3:0] state_next;              // Register to hold the next state of the state machine
-reg [6:0] price_current_product;   // Register to hold the price of the currently selected product
-reg [6:0] change_value;            // Register to hold the change amount to be returned
+// Internal signals
+reg [3:0] current_state, next_state;
+reg [6:0] product_price_reg, return_change_reg;
 
-// Sequential logic for state transition and register updates
+// Sequential State Registers
 always @(posedge clk or posedge rst) begin
     if (rst) begin
-        current_state <= STATE_IDLE;        // Set to IDLE state on reset
-        price_current_product <= 0;         // Reset product price register
-        change_value <= 0;                  // Reset change return register
+        current_state <= IDLE_STATE;
+        product_price_reg <= 0;
+        return_change_reg <= 0;
     end else begin
-        current_state <= state_next;        // Update current state to next state
-        price_current_product <= price_current_product; // Maintain current product price
-        change_value <= change_value;       // Maintain current change return value
+        current_state <= next_state;
+        product_price_reg <= product_price_reg; // no change during the same state
+        return_change_reg <= return_change_reg; // no change during the same state
     end
 end
 
-// Combinational logic for determining the next state based on current state and inputs
+// State transition logic
 always @(*) begin
     case (current_state)
-        STATE_IDLE: begin
-            if (initiate)
-                state_next = STATE_SELECT_PRODUCT; // Transition to product selection state if initiate is pressed
-            else if (abort)
-                state_next = STATE_IDLE; // Remain in IDLE state if abort is pressed
+        IDLE_STATE: begin
+            if (start)
+                next_state = SELECT_PRODUCT_STATE;
+            else if (cancel)
+                next_state = IDLE_STATE;
             else 
-                state_next = STATE_IDLE; // Remain in IDLE state if no action
+                next_state = IDLE_STATE;
         end    
-        STATE_SELECT_PRODUCT: begin
-            case (selected_product)
+        SELECT_PRODUCT_STATE: begin
+            case (product_code)
                 3'b000: begin
-                    state_next = STATE_PEN_SELECTED; // Transition to Pen selection state
-                    price_current_product = PRICE_PEN; // Set product price to Pen price
+                    next_state = PEN_SELECTION_STATE; // Pen is selected
+                    product_price_reg = PEN_PRICE;
                 end
                 3'b001: begin
-                    state_next = STATE_NOTEBOOK_SELECTED; // Transition to Notebook selection state
-                    price_current_product = PRICE_NOTEBOOK; // Set product price to Notebook price
+                    next_state = NOTEBOOK_SELECTION_STATE; // Notebook is selected
+                    product_price_reg = NOTEBOOK_PRICE;
                 end
                 3'b010: begin
-                    state_next = STATE_COKE_SELECTED; // Transition to Coke selection state
-                    price_current_product = PRICE_COKE; // Set product price to Coke price
+                    next_state = COKE_SELECTION_STATE; // Coke is Selected
+                    product_price_reg = COKE_PRICE;
                 end
                 3'b011: begin
-                    state_next = STATE_LAYS_SELECTED; // Transition to Lays selection state
-                    price_current_product = PRICE_LAYS; // Set product price to Lays price
+                    next_state = LAYS_SELECTION_STATE; // Lays is selected
+                    product_price_reg = LAYS_PRICE;
                 end
                 3'b100: begin
-                    state_next = STATE_WATER_BOTTLE_SELECTED; // Transition to Water bottle selection state
-                    price_current_product = PRICE_WATER_BOTTLE; // Set product price to Water bottle price
+                    next_state = WATER_BOTTLE_SELECTION_STATE; // Water bottle is selected
+                    product_price_reg = WATER_BOTTLE_PRICE;
                 end
                 default: begin
-                    state_next = STATE_IDLE; // Default to IDLE state for invalid product code
-                    price_current_product = 0; // Set product price to 0 for invalid selection
+                    next_state = IDLE_STATE; // Invalid product selection, go back to IDLE
+                    product_price_reg = 0;
                 end
             endcase
         end
-        STATE_PEN_SELECTED, STATE_NOTEBOOK_SELECTED, STATE_COKE_SELECTED, STATE_LAYS_SELECTED, STATE_WATER_BOTTLE_SELECTED: begin
-            if (abort) begin 
-                state_next = STATE_IDLE; // Transition to IDLE state if abort is pressed
-                change_value = coin_total_value; // Set return change to total coin value
+        PEN_SELECTION_STATE, NOTEBOOK_SELECTION_STATE, COKE_SELECTION_STATE, LAYS_SELECTION_STATE, WATER_BOTTLE_SELECTION_STATE: begin
+            if (cancel) begin 
+                next_state = IDLE_STATE;
+                return_change_reg = total_coin_value;
             end
-            else if (coin_total_value >= price_current_product)
-                state_next = STATE_DISPENSE_AND_RETURN_CHANGE; // Transition to dispense state if sufficient coins inserted
-            else if (payment_online)
-                state_next = STATE_DISPENSE_AND_RETURN_CHANGE; // Transition to dispense state if online payment is made
+            else if (total_coin_value >= product_price_reg)
+                next_state = DISPENSE_AND_RETURN_STATE;
+            else if (online_payment)
+                next_state = DISPENSE_AND_RETURN_STATE;
             else
-                state_next = current_state; // Remain in current state if conditions not met
+                next_state = current_state; // Stay in the current state until enough money or online payment
         end
-        STATE_DISPENSE_AND_RETURN_CHANGE: begin
-            state_next = STATE_IDLE; // Transition back to IDLE state after dispensing product
-            if (payment_online)
-                change_value = 0; // No change to return if payment was online
-            else if (coin_total_value >= price_current_product)
-                change_value = coin_total_value - price_current_product; // Calculate return change if sufficient coins inserted
+        DISPENSE_AND_RETURN_STATE: begin
+            next_state = IDLE_STATE;
+            if (online_payment)
+                return_change_reg = 0; // No return change in case of online payment
+            else if (total_coin_value >= product_price_reg)
+                return_change_reg = total_coin_value - product_price_reg;
         end
     endcase
 end
 
-// Combinational logic for output signals based on current state
+// Output logic
 always @(*) begin
-    current_state = current_state; // Output the current state
+    state = current_state;
     case (current_state)
-        STATE_DISPENSE_AND_RETURN_CHANGE: begin
-            dispense = 1; // Activate dispense signal
-            change_to_return = change_value; // Output the calculated return change
-            selected_price = price_current_product; // Output the price of the selected product
+        DISPENSE_AND_RETURN_STATE: begin
+            dispense_product = 1;
+            return_change = return_change_reg;
+            product_price = product_price_reg;
         end
         default: begin
-            dispense = 0; // Deactivate dispense signal
-            change_to_return = 0; // Set return change to 0
-            selected_price = 0; // Set product price to 0
+            dispense_product = 0;
+            return_change = 0;
+            product_price = 0; // Set to 0 when not in DISPENSE_AND_RETURN_STATE
         end
     endcase
 end
