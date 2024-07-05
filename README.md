@@ -14,3 +14,7 @@
 - Coke Price: 30 rupees<br>
 - Pen Price: 15 rupees<br>
 - Notebook Price: 50 rupees<br>
+
+<h2>Timing Diagram:</h2><br>
+
+![346146681-8c6081e4-6610-4a70-b8b1-e9d5cfd86315](https://github.com/Ashishupadhyaygit0001/Vending-Machine-using-verilog/assets/161508428/6b9c65d1-1f60-40da-91e0-d93bc8978f82)
